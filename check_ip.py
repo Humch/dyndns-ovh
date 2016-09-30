@@ -16,13 +16,13 @@ logging.basicConfig(level=logging.INFO, filename='checkip.log', format='%(asctim
 def majdyndns(webip):
 
     logging.info('Mise à jour du DynDNS OVH...')
-    payload = {'system': 'dyndns', 'hostname': 'me.nixtech.fr', 'myip': webip}
+    payload = {'system': 'dyndns', 'hostname': hostname, 'myip': webip}
     requests.get('http://www.ovh.com/nic/update', auth=HTTPBasicAuth(nom_utilisateur, mot_de_passe),params=payload)
     logging.info('Mise à jour OVH OK')
 
 def ecriture_ip(webip):
 
-    with open('/home/auxilium/scripts/mon_ip', 'w') as f:
+    with open(ip_file, 'w') as f:
         logging.info('Mise à jour du fichier local en cours...')
         f.write(webip)
         f.close()
@@ -30,7 +30,7 @@ def ecriture_ip(webip):
 
 def lecture_ip():
 
-    with open('/home/auxilium/scripts/mon_ip') as f:
+    with open(ip_file) as f:
         monip = f.read()
         f.close()
 
