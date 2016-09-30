@@ -1,6 +1,7 @@
 # -*- coding: utf8 -*-
 
 import sys, argparse, os
+import configparser
 import bs4
 import requests
 from requests.auth import HTTPBasicAuth
@@ -13,6 +14,69 @@ import logging
 logging.basicConfig(level=logging.INFO, filename='checkip.log', format='%(asctime)s %(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
 
+def setup_script():
+    
+    config = configparser.ConfigParser()
+    logging.info('démarrage de la configuration du script')
+    
+    if os.path.isfile('setup.cfg'):
+        while True:
+            reponse = input("La configuration existe, voulez vous la modifier ? Oui=O Non=N Supprimer=S\n")
+            
+            if reponse.lower() == 'o':
+                while True:
+                    reponse = input('Quel valeur est à modifier ?\nDomaine : D\nUtilisateur : U\nMot de passe : M\nQuitter : Q\n')
+                    if reponse.lower() == 'd':
+                        hostname = input('quel est le nom de domaine ?\n')
+                        config['DEFAULT'] = {'hostname': hostname}
+                    elif reponse.lower() == 'u':
+                        nom_utilisateur = input("quel est le nom de l'utilisateur ?\n")
+                        config['DEFAULT'] = {'nom_utilisateur' : nom_utilisateur}
+                    elif reponse.lower() == 'm':
+                        mot_de_passe = input("quel est le mot de passe ?\n")
+                        config['DEFAULT'] = {'mot_de_passe' : mot_de_passe}
+                    elif reponse.lower() == 'q':
+                        with open('setup.cfg', 'w') as configfile:
+                            config.write(configfile)
+                        sys.exit('Configuration terminée.\nMerci de relancer check_ip.py')
+                    else:
+                        print('Je ne comprends pas votre réponse\nMerci de la reformuler...\n')
+                    
+                    with open('setup.cfg', 'w') as configfile:
+                        config.write(configfile)
+                        logging.info('Modification du script ok')
+                    
+            elif reponse.lower() == 'n':
+                sys.exit('Ah, dommage :)\nMais que voulez vous alors?')
+            elif reponse.lower() == 's':
+                os.remove('setup.cfg')
+                break
+            else:
+                print('Je ne comprends pas votre réponse\nMerci de la reformuler...\n')
+    
+    if not os.path.isfile('setup.cfg'):
+        while True:
+            reponse = input('pas de configuration detectée, voulez vous la créer? Oui=O Non=N\n')
+        
+            if reponse.lower() =='o':
+                hostname = input('quel est le nom de domaine ?\n')
+                nom_utilisateur = input("quel est le nom de l'utilisateur ?\n")
+                mot_de_passe = input("quel est le mot de passe ?\n")
+                print('vous avez saisi les informations suivantes:\nhostname : %s\nutilisateur : %s\nmot de passe : %s\nEst ce correct? Oui=O Non=N' %(hostname, nom_utilisateur, mot_de_passe))
+                validation = input()
+                if validation.lower() == 'o':
+                    config['DEFAULT'] = {'hostname': hostname, 'nom_utilisateur' : nom_utilisateur, 'mot_de_passe' : mot_de_passe}
+                    with open('setup.cfg', 'w') as configfile:
+                        config.write(configfile)
+                        logging.info('Configuration du script ok')
+                        break
+            
+            elif reponse.lower() == 'n':
+                sys.exit('Ah, dommage :)\nMais que voulez vous alors?')
+            
+            else:
+                print('Je ne comprends pas votre réponse\nMerci de la reformuler...')
+
 def majdyndns(webip):
 
     logging.info('Mise à jour du DynDNS OVH...')
@@ -22,19 +86,30 @@ def majdyndns(webip):
 
 def ecriture_ip(webip):
 
-    with open(ip_file, 'w') as f:
+    with open('ip_file', 'w') as f:
         logging.info('Mise à jour du fichier local en cours...')
         f.write(webip)
         f.close()
         logging.info('Mise à jour du fichier local OK.')
 
 def lecture_ip():
+    
+    try:
+        with open('ip_file') as f:
+            monip = f.read()
+            f.close()
 
-    with open(ip_file) as f:
-        monip = f.read()
-        f.close()
-
-    lecturewebip = requests.get('http://www.adresseip.com')
+    except FileNotFoundError:
+        
+        open('ip_file', 'a')
+        monip = '0.0.0.0'
+    
+    try:
+        lecturewebip = requests.get('http://www.adresseip.com')
+    
+    except:
+        logging.info('Erreur de connexion')
+        sleep(60)
 
     soup = bs4.BeautifulSoup(lecturewebip.text, "lxml")
     webip = re.findall(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})',str(soup))
@@ -46,7 +121,13 @@ def lecture_ip():
         ecriture_ip(webip[0])
         majdyndns(webip[0])
 
-def main(argv):
+def main(args):
+    
+    print(args)
+    
+    if args.setup:
+        setup_script()
+        sys.exit('Configuration terminée.\nMerci de relancer check_ip.py')
     
     if not os.path.isfile('setup.cfg'):
         sys.exit('Pas de configuration... \nMerci de lancer python3 check_ip.py --setup')
@@ -59,6 +140,6 @@ def main(argv):
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='configuration du DynDNS OVH')
-    parser.add_argument("-s", "--setup", nargs='0',help="création et modification du fichier de configuration")
-    parser.parse_args()
-    main(sys.argv[1:])
+    parser.add_argument("-s", "--setup", action='store_true', help="création et modification du fichier de configuration")
+    args = parser.parse_args()
+    main(args)
