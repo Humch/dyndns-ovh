@@ -107,24 +107,21 @@ def lecture_ip():
     try:
         lecturewebip = requests.get('http://www.adresseip.com')
     
+        soup = bs4.BeautifulSoup(lecturewebip.text, "lxml")
+        webip = re.findall(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})',str(soup))
+
+        if webip[0] == monip:
+            pass
+        else:
+            logging.info('Votre IP a changé')
+            ecriture_ip(webip[0])
+            majdyndns(webip[0])
+        
     except:
         logging.info('Erreur de connexion')
-        sleep(60)
-
-    soup = bs4.BeautifulSoup(lecturewebip.text, "lxml")
-    webip = re.findall(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})',str(soup))
-
-    if webip[0] == monip:
-        pass
-    else:
-        logging.info('Votre IP a changé')
-        ecriture_ip(webip[0])
-        majdyndns(webip[0])
 
 def main(args):
-    
-    print(args)
-    
+
     if args.setup:
         setup_script()
         sys.exit('Configuration terminée.\nMerci de relancer check_ip.py')
