@@ -1,4 +1,3 @@
-check_ip_source.py
 *.log
 *.cfg
 ip_file

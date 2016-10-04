@@ -80,8 +80,14 @@ def setup_script():
 def majdyndns(webip):
 
     logging.info('Mise à jour du DynDNS OVH...')
-    payload = {'system': 'dyndns', 'hostname': hostname, 'myip': webip}
-    requests.get('http://www.ovh.com/nic/update', auth=HTTPBasicAuth(nom_utilisateur, mot_de_passe),params=payload)
+    
+    logging.info('Lecture de la configuration du script')
+    config = configparser.ConfigParser()
+    config.read('setup.cfg')
+    
+    payload = {'system': 'dyndns', 'hostname': config['DEFAULT']['hostname'], 'myip': webip}
+    
+    requests.get('http://www.ovh.com/nic/update', auth=HTTPBasicAuth(config['DEFAULT']['nom_utilisateur'], config['DEFAULT']['mot_de_passe']),params=payload)
     logging.info('Mise à jour OVH OK')
 
 def ecriture_ip(webip):
@@ -99,23 +105,22 @@ def lecture_ip():
             monip = f.read()
             f.close()
 
-    except FileNotFoundError:
+    except:
         
-        open('ip_file', 'a')
-        monip = '0.0.0.0'
+        with open('ip_file', 'a') as f:
+            monip = '0.0.0.0'
+            f.write(monip)
+            f.close()
     
     try:
-        lecturewebip = requests.get('http://www.adresseip.com')
-    
-        soup = bs4.BeautifulSoup(lecturewebip.text, "lxml")
-        webip = re.findall(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})',str(soup))
-
-        if webip[0] == monip:
+        webip = requests.get('http://ip.42.pl/raw')
+        
+        if webip.text == monip:
             pass
         else:
             logging.info('Votre IP a changé')
-            ecriture_ip(webip[0])
-            majdyndns(webip[0])
+            ecriture_ip(webip.text)
+            majdyndns(webip.text)
         
     except:
         logging.info('Erreur de connexion')
